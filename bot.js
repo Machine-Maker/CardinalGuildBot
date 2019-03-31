@@ -1,6 +1,6 @@
 require('dotenv').config()
 const axios = require('axios')
-const lunr = require('lunr')
+const Fuse = require('fuse.js')
 const cacheAdapterEnhancer = require('axios-extensions').cacheAdapterEnhancer
 const Discord = require('discord.js')
 const Embed = Discord.RichEmbed
@@ -13,16 +13,27 @@ const http = axios.create({
   adapter: cacheAdapterEnhancer(axios.defaults.adapter)
 })
 
-const islandCmd = new Set()
-
-let islandMapper = island => {
-  return {
-    id: island.id,
-    properties: island.properties,
-    "properties_nickName": island.properties.nickName,
-    "properties_name": island.properties.name
-  }
+const fuseOptions = {
+  shouldSort: true,
+  includeScore: true,
+  threshold: 0.3,
+  location: 0,
+  distance: 100,
+  maxPatternLength: 32,
+  minMatchCharLength: 1,
+  keys: [
+    { 
+      name: 'properties.nickName',
+      weight: 0.7
+    },
+    { 
+      name:'properties.name',
+      weight: 0.3
+    }
+  ]
 }
+
+const islandCmd = new Set()
 
 async function asyncForEach(array, callback) {
   for (let i = 0; i < array.length; i++)
@@ -30,19 +41,10 @@ async function asyncForEach(array, callback) {
 }
 
 // initial request
-http.get(`${process.env.API_URL}/api/islands.json`).then(res => {
+http.get(`${process.env.API_URL}/api/islands.json`).then(() => {
   console.log('First request done')
-  // let idx = lunr(function() {
-  //   this.ref('id')
-  //   this.field('properties_nickName')
-  //   this.field('properties_name')
-
-  //   res.data.features.map(islandMapper).forEach(island => {
-  //     this.add(island)
-  //   })
-  // })
-
-  // console.log(idx.search('+Old~2 +Alexndria~4'))
+  // const fuse = new Fuse(res.data.features, fuseOptions)
+  // console.log(fuse.search('Deathstar'))
 })
 
 bot.on('ready', () => {
@@ -86,7 +88,7 @@ bot.on('message', async msg => {
       const request = await http.get(`${process.env.API_URL}/api/islands.json`)
       const islandData = request.data.features
       let island = null
-      islandID = args.join(' ')
+      const islandID = args.join(' ')
       if (isNaN(parseInt(islandID))) {
         island = islandData.find(island => island.properties.nickName === islandID)
         if (!island) island = islandData.find(island => island.properties.name === islandID)
@@ -95,20 +97,9 @@ bot.on('message', async msg => {
         island = islandData.find(island => island.id === parseInt(islandID))
       }
       if (!island) {
-        let idx = lunr(function() {
-          this.ref('id')
-          this.field('properties_nickName')
-          this.field('properties_name')
-          islandData.map(islandMapper).forEach(island => {
-            this.add(island)
-          })
-        })
-        let search = ''
-        args.forEach(a => {
-          search += `+${a}~${parseInt(a.length/3)}`
-        })
+        const fuse = new Fuse(islandData, fuseOptions)
+        const results = fuse.search(args.join(' '))
 
-        const results = idx.search(search)
         if (results.length === 0) {
           if (!msg.author.dmChannel) await msg.author.createDM()
           msg.author.dmChannel.send('No results!')
@@ -116,7 +107,7 @@ bot.on('message', async msg => {
         }
         else if (results.length > 8) {
           if (!msg.author.dmChannel) await msg.author.createDM()
-          msg.author.dmChannel.send('Too many search results!')
+          msg.author.dmChannel.send('Too many search results! Please narrow it!')
           return msg.channel.type === 'dm' ? null : msg.delete()
         }
         else if (results.length !== 1) {
@@ -126,8 +117,7 @@ bot.on('message', async msg => {
           let letters = []
           let emojis = []
           results.forEach((r, i) => {
-            const isl = islandData.find(island => String(island.id) === r.ref)
-            description += `:regional_indicator_${String.fromCharCode(97+i)}: ${isl.properties.nickName || isl.properties.name}\n`
+            description += `:regional_indicator_${String.fromCharCode(97+i)}: ${r.item.properties.nickName || r.item.properties.name}\n`
             emojis.push(`${String.fromCharCode(55356)}${String.fromCharCode(56806 + i)}`)
             letters.push(String.fromCharCode(97+i))
           })
@@ -152,13 +142,13 @@ bot.on('message', async msg => {
           }
           else {
             if (choice.first().content)
-              island = islandData.find(island => String(island.id) === results[letters.indexOf(choice.first().content.toLowerCase())].ref)
+              island = results[letters.indexOf(choice.first().content.toLowerCase())].item
             else
-              island = islandData.find(island => String(island.id) === results[emojis.indexOf(choice.first().emoji.name)].ref)
+              island = results[emojis.indexOf(choice.first().emoji.name)].item
           }
         }
         else
-          island = islandData.find(island => String(island.id) === results[0].ref)
+          island = results[0].item
       }
       const islandEmbed = new Embed()
       islandEmbed.setTitle(island.properties.nickName || island.properties.name)

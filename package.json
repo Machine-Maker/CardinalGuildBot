@@ -1,5 +1,5 @@
 {
-  "name": "CardinalGuild",
+  "name": "cardinal-guild-bot",
   "version": "0.1.0",
   "description": "A Discord Bot for the Cardinal Guild, a mapping organization for Worlds Adrift",
   "main": "bot.js",
@@ -10,6 +10,6 @@
     "axios-extensions": "^3.0.5",
     "discord.js": "^11.4.2",
     "dotenv": "^7.0.0",
-    "lunr": "^2.3.6"
+    "fuse.js": "^3.4.4"
   }
 }

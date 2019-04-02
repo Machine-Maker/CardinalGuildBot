@@ -96,9 +96,7 @@ bot.on('message', async msg => {
         const results = fuse.search(args.join(' '))
 
         if (results.length === 0) {
-          if (!msg.author.dmChannel) await msg.author.createDM()
-          msg.author.dmChannel.send('No results!')
-          return msg.channel.type === 'dm' ? null : msg.delete()
+          return msg.reply('No islands found with that author name!')
         }
         else if (results.length > 4) {
           if (!msg.author.dmChannel) await msg.author.createDM()

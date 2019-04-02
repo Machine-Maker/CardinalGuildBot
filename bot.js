@@ -20,20 +20,11 @@ const fuseOptions = {
   location: 0,
   distance: 100,
   maxPatternLength: 32,
-  minMatchCharLength: 1,
-  keys: [
-    { 
-      name: 'properties.nickName',
-      weight: 0.7
-    },
-    { 
-      name:'properties.name',
-      weight: 0.3
-    }
-  ]
+  minMatchCharLength: 1
 }
 
 const islandCmd = new Set()
+const creatorCmd = new Set()
 
 async function asyncForEach(array, callback) {
   for (let i = 0; i < array.length; i++)
@@ -42,9 +33,11 @@ async function asyncForEach(array, callback) {
 
 // initial request
 http.get(`${process.env.API_URL}/api/islands.json`).then(() => {
-  console.log('First request done')
-  // const fuse = new Fuse(res.data.features, fuseOptions)
-  // console.log(fuse.search('Deathstar'))
+  console.log('GET islands.json')
+})
+
+http.get(`${process.env.API_URL}/api/creators.json`).then(() => {
+  console.log('GET creators.json')
 })
 
 bot.on('ready', () => {
@@ -70,11 +63,115 @@ bot.on('message', async msg => {
   const args = msg.content.slice(bot.prefix.length).trim().split(/\s+/g)
   const cmd = args.shift().toLowerCase()
   switch (cmd) {
+    case 'creator': {
+      if (creatorCmd.has(msg.author.id)) {
+        if (!msg.author.dmChannel) await msg.author.createDM()
+        msg.author.dmChannel.send('You must wait to use that command!')
+        return msg.channel.type === 'dm' ? null : msg.delete()
+      }
+      if (args.length < 1) {
+        if (!msg.author.dmChannel) await msg.author.createDM()
+        const embed = new Embed()
+        embed.setTitle(`${bot.prefix}creator command`)
+          .setColor('#8c0000')
+          .addField('Usage', `${bot.prefix}creator <name|id>`)
+          .addField('Description', 'Shows islands created by the specific creator')
+        return msg.author.dmChannel.send(embed)
+      }
+      const request = await http.get(`${process.env.API_URL}/api/creators.json`)
+      const creatorData = request.data
+      let creator = null
+      const creatorID = args.join(' ')
+      if (isNaN(parseInt(creatorID)))
+        creator = creatorData.find(c => c.name === creatorID)
+      else
+        creator = creatorData.find(c => c.id === parseInt(creatorID))
+
+      let time = null
+      if (!creator) {
+        fuseOptions.keys = [
+          { name: 'name' }
+        ]
+        const fuse = new Fuse(creatorData, fuseOptions)
+        const results = fuse.search(args.join(' '))
+
+        if (results.length === 0) {
+          if (!msg.author.dmChannel) await msg.author.createDM()
+          msg.author.dmChannel.send('No results!')
+          return msg.channel.type === 'dm' ? null : msg.delete()
+        }
+        else if (results.length > 4) {
+          if (!msg.author.dmChannel) await msg.author.createDM()
+          msg.author.dmChannel.send('Too many search results! Please narrow it')
+          return msg.channel.type === 'dm' ? null : msg.delete()
+        }
+        else if (results.length !== 1) {
+          time = await msg.react('\u23F3')
+          const searchEmbed = new Embed().setTitle('Did you mean...')
+          let description = 'React with or type the letter of the creator!\n\n'
+          let letters = []
+          let emojis = []
+          results.forEach((r, i) => {
+            description += `:regional_indicator_${String.fromCharCode(97+i)}: ${r.item.name}\n`
+            emojis.push(`${String.fromCharCode(55356)}${String.fromCharCode(56806 + i)}`)
+            letters.push(String.fromCharCode(97+i))
+          })
+          searchEmbed.setDescription(description)
+          if (!msg.author.dmChannel) await msg.author.createDM()
+          const m = await msg.author.dmChannel.send(searchEmbed)
+          const reactFilter = (reaction, user) => user.id === msg.author.id && emojis.includes(reaction.emoji.name)
+          const msgFilter = am => am.author.id === msg.author.id
+          let choice = null
+          asyncForEach(emojis, async e => {
+            if (!choice)
+              await m.react(e)
+          })
+          let aReacts = m.awaitReactions(reactFilter, { max: 1, time: 30000 })
+          let aMsgs = m.channel.awaitMessages(msgFilter, { max: 1, time: 30000})
+          choice = await Promise.race([aReacts, aMsgs])
+          if (choice.size === 0) {
+            m.delete()
+            if (!msg.author.dmChannel) await msg.author.createDM()
+            msg.author.dmChannel.send('You did not make a selection!')
+            return msg.channel.type === 'dm' ? null : msg.delete()
+          }
+          else {
+            if (choice.first().content)
+              creator = results[letters.indexOf(choice.first().content.toLowerCase())].item
+            else
+              creator = results[emojis.indexOf(choice.first().emoji.name)].item
+          }
+        }
+        else creator = results[0].item
+      }
+      const islandRequest = await http.get(`${process.env.API_URL}/api/islands.json`)
+      const creatorIslands = islandRequest.data.features.filter(i => i.properties.creator === creator.name)
+      let description = `Islands created by ${creator.name}\n\n`
+      creatorIslands.forEach(is => {
+        const name = is.properties.nickName || is.properties.name
+        description += `**${name}**: [PvE](https://map.cardinalguild.com/pve/?island=${is.id})/[PvP](https://map.cardinalguild.com/pvp/?island=${is.id})\n`
+      })
+
+      const creatorEmbed = new Embed()
+        .setThumbnail('https://map.cardinalguild.com/_nuxt/img/cd4d6e4.png')
+        .setAuthor(creator.name, null, creator.workshopUrl)
+        .setDescription(description)
+        .setFooter(`Count: ${creatorIslands.length}`)
+        .setColor('#8c0000')
+      if (time) time.remove()
+      msg.react('\u2705')
+      msg.channel.send(creatorEmbed)
+      creatorCmd.add(msg.author.id)
+      setTimeout(() => {
+        creatorCmd.delete(msg.author.id)
+      }, 10000)
+      break
+    }
     case 'island': {
       if (islandCmd.has(msg.author.id)) {
         if (!msg.author.dmChannel) await msg.author.createDM()
         msg.author.dmChannel.send('You must wait to use that command!')
-        return msg.delete()
+        return msg.channel.type === 'dm' ? null : msg.delete()
       }
       if (args.length < 1) {
         if (!msg.author.dmChannel) await msg.author.createDM()
@@ -97,6 +194,16 @@ bot.on('message', async msg => {
         island = islandData.find(island => island.id === parseInt(islandID))
       }
       if (!island) {
+        fuseOptions.keys = [
+          { 
+            name: 'properties.nickName',
+            weight: 0.7
+          },
+          { 
+            name:'properties.name',
+            weight: 0.3
+          }
+        ]
         const fuse = new Fuse(islandData, fuseOptions)
         const results = fuse.search(args.join(' '))
 
@@ -162,7 +269,8 @@ bot.on('message', async msg => {
         .addField('Databanks', island.properties.databanks, true)
         .addField('Revival Chambers', `\`\`\`${island.properties.revivalChambers ? 'css\nYes' : 'diff\n- No'}\`\`\``, true)
         .addField('Turrets', `\`\`\`${island.properties.turrets ? 'diff\n- Yes' : 'css\nNo'}\`\`\``, true)
-        .addField('Survey by', `${island.properties.surveyCreatedBy} @ ${island.properties.createdAt}`, true)
+        .addField('Map Links', `[PvE](https://map.cardinalguild.com/pve/?island=${island.id})\n[PvP](https://map.cardinalguild.com/pvp/?island=${island.id})`, true)
+        .addField('Survey by', `${island.properties.surveyCreatedBy}\n${island.properties.createdAt}`, true)
       switch (island.properties.tier) {
         case 1: {
           islandEmbed.setColor('#b1deab')

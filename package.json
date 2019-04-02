@@ -5,11 +5,18 @@
   "main": "bot.js",
   "author": "Machine_Maker",
   "license": "MIT",
+  "scripts": {
+    "dev": "nodemon bot.js",
+    "start": "node bot.js"
+  },
   "dependencies": {
     "axios": "^0.18.0",
     "axios-extensions": "^3.0.5",
     "discord.js": "^11.4.2",
     "dotenv": "^7.0.0",
     "fuse.js": "^3.4.4"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.10"
   }
 }

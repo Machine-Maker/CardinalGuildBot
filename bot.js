@@ -57,6 +57,13 @@ bot.on('error', err => {
   console.error(err.message)
 })
 
+bot.on('disconnect', () => console.log('Disconnected!'))
+
+bot.on('reconnecting', () => {
+  console.log('Reconnecting...')
+  bot.user.setPresence({ game: { name: 'the map! | ?island', type: 'WATCHING' }, status: 'online' })
+})
+
 bot.on('message', async msg => {
   if (msg.author.bot) return;
   if (!msg.content.startsWith(bot.prefix)) return;

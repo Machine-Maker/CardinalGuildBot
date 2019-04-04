@@ -151,21 +151,42 @@ bot.on('message', async msg => {
       }
       const islandRequest = await http.get(`${process.env.API_URL}/api/islands.json`)
       const creatorIslands = islandRequest.data.features.filter(i => i.properties.creator === creator.name)
-      let description = `Islands created by ${creator.name}\n\n`
+      let description = [`Islands created by ${creator.name}\n\n`]
+      const nextPage = 'React with :arrow_down: to see more...'
+      // let description = `Islands created by ${creator.name}\n\n`
       creatorIslands.forEach(is => {
         const name = is.properties.nickName || is.properties.name
-        description += `**${name}**: [PvE](https://map.cardinalguild.com/pve/?island=${is.id})/[PvP](https://map.cardinalguild.com/pvp/?island=${is.id})\n`
+        const add = `**${name}**: [PvE](https://map.cardinalguild.com/pve/?island=${is.id})/[PvP](https://map.cardinalguild.com/pvp/?island=${is.id})\n`
+        if ((description[description.length - 1] + add).length > 2048 - nextPage.length) {
+          description[description.length - 1] += nextPage
+          description.push(add)
+        }
+        else description[description.length - 1] += `**${name}**: [PvE](https://map.cardinalguild.com/pve/?island=${is.id})/[PvP](https://map.cardinalguild.com/pvp/?island=${is.id})\n`
       })
-
       const creatorEmbed = new Embed()
         .setThumbnail('https://map.cardinalguild.com/_nuxt/img/cd4d6e4.png')
         .setAuthor(creator.name, null, creator.workshopUrl)
-        .setDescription(description)
+        .setDescription(description[0])
         .setFooter(`Count: ${creatorIslands.length}`)
         .setColor('#8c0000')
       if (time) time.remove()
       msg.react('\u2705')
-      msg.channel.send(creatorEmbed)
+      const embedMsg = await msg.channel.send(creatorEmbed)
+      if (description.length > 1) {
+        let msgNumber = 1
+        embedMsg.react('\u2b07')
+        const filter = (r, u) => u.id === msg.author.id && r.emoji.name === '\u2b07'
+        const collector = embedMsg.createReactionCollector(filter, { max: 1 })
+        let sendNext = async () => {
+          const newMsg = await msg.channel.send(creatorEmbed.setDescription(description[msgNumber]))
+          if (msgNumber < description.length - 1) {
+            newMsg.react('\u2b07')
+            newMsg.createReactionCollector(filter, { max: 1}).on('end', sendNext)
+            msgNumber++
+          }
+        }
+        collector.on('end', sendNext)
+      }
       creatorCmd.add(msg.author.id)
       setTimeout(() => {
         creatorCmd.delete(msg.author.id)

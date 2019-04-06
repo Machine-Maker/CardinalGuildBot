@@ -135,7 +135,7 @@ bot.on('message', async msg => {
           let aMsgs = m.channel.awaitMessages(msgFilter, { max: 1, time: 30000})
           choice = await Promise.race([aReacts, aMsgs])
           if (choice.size === 0) {
-            m.delete()
+            if (m.channel.type !== 'dm') m.delete()
             if (!msg.author.dmChannel) await msg.author.createDM()
             msg.author.dmChannel.send('You did not make a selection!')
             return msg.channel.type === 'dm' ? null : msg.delete()
@@ -268,7 +268,7 @@ bot.on('message', async msg => {
           let aMsgs = m.channel.awaitMessages(msgFilter, { max: 1, time: 30000})
           choice = await Promise.race([aReacts, aMsgs])
           if (choice.size === 0) {
-            m.delete()
+            if (m.channel.type !== 'dm') m.delete()
             if (!msg.author.dmChannel) await msg.author.createDM()
             msg.author.dmChannel.send('You did not make a selection!')
             return msg.channel.type === 'dm' ? null : msg.delete()

@@ -284,7 +284,7 @@ bot.on('message', async msg => {
           island = results[0].item
       }
       const islandEmbed = new Embed()
-      islandEmbed.setTitle(island.properties.nickName || island.properties.name)
+      islandEmbed.setTitle(island.properties.nickName ? `${island.properties.nickName} (${island.properties.name})` : island.properties.name)
         .setURL(island.properties.workshopUrl || null)
         .setImage(island.properties.imagePopup)
         .setThumbnail('https://map.cardinalguild.com/_nuxt/img/cd4d6e4.png')

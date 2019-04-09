@@ -250,7 +250,7 @@ bot.on('message', async msg => {
           let letters = []
           let emojis = []
           results.forEach((r, i) => {
-            description += `:regional_indicator_${String.fromCharCode(97+i)}: ${r.item.properties.nickName || r.item.properties.name}\n`
+            description += `:regional_indicator_${String.fromCharCode(97+i)}: ${r.item.properties.nickName ? `${r.item.properties.nickName} (${r.item.properties.name})` : r.item.properties.name}\n`
             emojis.push(`${String.fromCharCode(55356)}${String.fromCharCode(56806 + i)}`)
             letters.push(String.fromCharCode(97+i))
           })
@@ -286,7 +286,7 @@ bot.on('message', async msg => {
       const islandEmbed = new Embed()
       islandEmbed.setTitle(island.properties.nickName ? `${island.properties.nickName} (${island.properties.name})` : island.properties.name)
         .setURL(island.properties.workshopUrl || null)
-        .setImage(island.properties.imagePopup)
+        .setImage(island.properties.imageOriginal)
         .setThumbnail('https://map.cardinalguild.com/_nuxt/img/cd4d6e4.png')
         .setAuthor(island.properties.creator, null, island.properties.creatorWorkshopUrl || null)
         .addField('Tier', island.properties.tier, true)
@@ -330,4 +330,4 @@ bot.on('message', async msg => {
   }
 })
 
-bot.login(process.env.TOKEN)
+bot.login(process.env.TOKEN_TEST)

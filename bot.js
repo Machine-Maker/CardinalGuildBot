@@ -330,4 +330,4 @@ bot.on('message', async msg => {
   }
 })
 
-bot.login(process.env.TOKEN_TEST)
+bot.login(process.env.TOKEN)

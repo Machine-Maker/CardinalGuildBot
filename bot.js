@@ -219,6 +219,7 @@ bot.on('message', async msg => {
       else {
         island = islandData.find(island => island.id === parseInt(islandID))
       }
+      const wait = await msg.react('\u23F3')
       if (!island) {
         fuseOptions.keys = [
           { 
@@ -236,15 +237,16 @@ bot.on('message', async msg => {
         if (results.length === 0) {
           if (!msg.author.dmChannel) await msg.author.createDM()
           msg.author.dmChannel.send('No results!')
+          wait.remove()
           return msg.channel.type === 'dm' ? null : msg.delete()
         }
         else if (results.length > 8) {
           if (!msg.author.dmChannel) await msg.author.createDM()
           msg.author.dmChannel.send('Too many search results! Please narrow it!')
+          wait.remove()
           return msg.channel.type === 'dm' ? null : msg.delete()
         }
         else if (results.length !== 1) {
-          msg.react('\u23F3')
           const searchEmbed = new Embed().setTitle('Did you mean...')
           let description = 'React with or type the letter of the island you meant to type!\n\n'
           let letters = []
@@ -271,6 +273,7 @@ bot.on('message', async msg => {
             if (m.channel.type !== 'dm') m.delete()
             if (!msg.author.dmChannel) await msg.author.createDM()
             msg.author.dmChannel.send('You did not make a selection!')
+            wait.remove()
             return msg.channel.type === 'dm' ? null : msg.delete()
           }
           else {
@@ -283,6 +286,7 @@ bot.on('message', async msg => {
         else
           island = results[0].item
       }
+      wait.remove()
       const islandEmbed = new Embed()
       islandEmbed.setTitle(island.properties.nickName ? `${island.properties.nickName} (${island.properties.name})` : island.properties.name)
         .setURL(island.properties.workshopUrl || null)
@@ -318,9 +322,7 @@ bot.on('message', async msg => {
           islandEmbed.setColor('RED')
         }
       }
-      msg.clearReactions().then(() => {
-        msg.react('\u2705')
-      })
+      msg.react('\u2705')
       msg.channel.send(islandEmbed)
       islandCmd.add(msg.author.id)
       setTimeout(() => {

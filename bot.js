@@ -55,6 +55,7 @@ bot.on('ready', () => {
 
 bot.on('error', err => {
   console.error(err.message)
+  bot.user.setPresence({ game: { name: 'the map! | ?island', type: 'WATCHING' }, status: 'online' })
 })
 
 bot.on('disconnect', () => console.log('Disconnected!'))

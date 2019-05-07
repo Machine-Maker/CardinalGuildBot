@@ -61,7 +61,6 @@ bot.on('error', err => {
 bot.on('disconnect', () => console.log('Disconnected!'))
 
 bot.on('reconnecting', () => {
-  console.log('Reconnecting...')
   bot.user.setPresence({ game: { name: 'the map! | ?island', type: 'WATCHING' }, status: 'online' })
 })
 
@@ -142,8 +141,17 @@ bot.on('message', async msg => {
             return msg.channel.type === 'dm' ? null : msg.delete()
           }
           else {
-            if (choice.first().content)
+            if (choice.first().content) {
+              if (choice.first().content.toLowerCase() === 'cancel') {
+                msg.reply('Cancelled!').then(mr => {
+                  setTimeout(() => mr.delete(), 4000)
+                })
+                time.remove()
+                m.delete()
+                return msg.channel.type === 'dm' ? null : msg.delete()
+              }
               creator = results[letters.indexOf(choice.first().content.toLowerCase())].item
+            }
             else
               creator = results[emojis.indexOf(choice.first().emoji.name)].item
           }
@@ -278,8 +286,17 @@ bot.on('message', async msg => {
             return msg.channel.type === 'dm' ? null : msg.delete()
           }
           else {
-            if (choice.first().content)
+            if (choice.first().content) {
+              if (choice.first().content.toLowerCase() === 'cancel') {
+                msg.reply('Cancelled!').then(mr => {
+                  setTimeout(() => mr.delete(), 4000)
+                })
+                wait.remove()
+                m.delete()
+                return msg.channel.type === 'dm' ? null : msg.delete()
+              }
               island = results[letters.indexOf(choice.first().content.toLowerCase())].item
+            }
             else
               island = results[emojis.indexOf(choice.first().emoji.name)].item
           }
@@ -333,4 +350,4 @@ bot.on('message', async msg => {
   }
 })
 
-bot.login(process.env.TOKEN)
+bot.login(process.env.ENVIROMENT === 'dev' ? process.env.TOKEN_TEST : process.env.TOKEN)

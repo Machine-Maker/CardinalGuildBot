@@ -6,7 +6,7 @@
   "author": "Machine_Maker",
   "license": "MIT",
   "scripts": {
-    "dev": "nodemon bot.js",
+    "dev": "ENVIROMENT=dev nodemon bot.js",
     "start": "node bot.js"
   },
   "dependencies": {
